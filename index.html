@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="bn"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Earnify</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- Monetag: ড্যাশবোর্ডের দেওয়া script ট্যাগটি এখানে পেস্ট করুন (Zone ID সহ) -->
+<style>
+:root{--bg:#0f1220;--card:#1a1f36;--tx:#eef;--mut:#8a93b8;--ac:#4f8cff;--ok:#2ecc71;--no:#e74c3c}
+@media(prefers-color-scheme:light){:root{--bg:#f3f5fb;--card:#fff;--tx:#12163a;--mut:#667}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px system-ui,sans-serif;padding-bottom:72px}
+.w{padding:14px;max-width:520px;margin:auto}.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px}
+.big{font-size:30px;font-weight:700;color:var(--ac)}.mut{color:var(--mut);font-size:13px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:10px}.row{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #8883}
+button,input,select{font:inherit;border-radius:10px;border:0;padding:12px;width:100%;margin-top:8px}
+input,select{background:#8822;color:var(--tx)}button{background:var(--ac);color:#fff;font-weight:600}
+button.s{background:#8833;color:var(--tx)}button.ok{background:var(--ok)}button.no{background:var(--no)}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);padding:6px}
+nav a{flex:1;text-align:center;padding:8px 2px;font-size:12px;color:var(--mut)}nav a.on{color:var(--ac);font-weight:700}
+.bar{height:8px;background:#8833;border-radius:6px;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--ac)}
+</style></head><body><div class="w" id="app">লোড হচ্ছে…</div><nav id="nav"></nav>
+<script>
+// ===== সেটিংস: এই দুটো বদলান =====
+const API='https://YOUR-WORKER.YOUR-NAME.workers.dev';
+const ZONE='ZONEID'; // Monetag Zone ID (ফাংশন: show_ZONEID)
+// ==================================
+const tg=Telegram.WebApp;tg.ready();tg.expand();
+const api=(action,d={})=>fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:tg.initData,action,...d})}).then(r=>r.json());
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const t=n=>'৳'+(+n).toFixed(2),dt=x=>new Date(x).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+let D,tab='home',A={};
+async function load(){D=await api('me');if(D.error){app.innerHTML='<div class="card">'+esc(D.error)+'</div>';return}draw()}
+function draw(){
+  const tabs=[['home','হোম'],['ads','অ্যাড'],['ref','রেফার'],['hist','হিস্ট্রি'],['wd','উইথড্র']];
+  if(D.admin)tabs.push(['adm','অ্যাডমিন']);
+  nav.innerHTML=tabs.map(([k,n])=>`<a href="#" class="${tab==k?'on':''}" onclick="tab='${k}';draw();return false">${n}</a>`).join('');
+  const m=D.me,c=D.cfg;let h='';
+  if(tab=='home')h=`<div class="card"><div class="mut">${esc(m.name)} · ID ${m.id}</div><div class="mut" style="margin-top:10px">AVAILABLE BALANCE</div><div class="big">${t(m.balance)}</div></div>
+  <div class="g"><div class="card"><div class="mut">TOTAL EARNED</div><b>${t(m.earned)}</b></div><div class="card"><div class="mut">TASKS DONE</div><b>${m.tasks}</b></div><div class="card"><div class="mut">REFERRALS</div><b>${m.refs}</b></div><div class="card"><div class="mut">WITHDRAWN</div><b>${t(D.withdrawn)}</b></div></div>
+  <button onclick="tab='ads';draw()">▶ Ads Task</button><button class="s" onclick="tab='wd';draw()">Withdraw</button>`;
+  if(tab=='ads'){const p=Math.min(100,D.adsToday/c.daily*100);h=`<div class="card"><b>Today's Progress</b><div class="mut">প্রতি ঘণ্টায় ${c.hourly}টি · দৈনিক ${c.daily}টি · প্রতি অ্যাডে ${t(c.ad_reward)}</div><div class="big">${D.adsToday}/${c.daily}</div><div class="bar"><i style="width:${p}%"></i></div><button id="adb" onclick="watch()">Watch Ad & Earn</button></div>`}
+  if(tab=='ref'){const l=`https://t.me/${D.bot}?start=${m.id}`;h=`<div class="card"><div class="mut">TOTAL REFERRALS</div><div class="big">${m.refs}</div><p>প্রতি নতুন ইউজারে ${t(c.ref_reward)} পাবেন।</p><input readonly value="${l}" id="rl"><button onclick="navigator.clipboard.writeText('${l}');tg.showAlert('কপি হয়েছে')">Copy</button><button class="s" onclick="tg.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent('${l}'))">Share to Telegram</button></div><div class="card"><b>Your Referrals</b>${D.refs.map(r=>`<div class="row"><span>${esc(r.name)}<br><span class="mut">${dt(r.joined)}</span></span><b>+${t(c.ref_reward)}</b></div>`).join('')||'<p class="mut">এখনো কেউ নেই</p>'}</div>`}
+  if(tab=='hist')h=`<div class="card"><b>History</b>${D.tx.map(x=>`<div class="row"><span>${esc(x.note)}<br><span class="mut">${dt(x.ts)}</span></span><b style="color:var(--${x.amount<0?'no':'ok'})">${x.amount<0?'-':'+'}${t(Math.abs(x.amount))}</b></div>`).join('')||'<p class="mut">কিছু নেই</p>'}</div>`;
+  if(tab=='wd')h=`<div class="card"><div class="mut">AVAILABLE BALANCE</div><div class="big">${t(m.balance)}</div><input id="wa" type="number" placeholder="Amount (৳)"><select id="wm"><option>bKash</option><option>Nagad</option><option>Rocket</option></select><input id="wc" placeholder="Account number"><button onclick="wd()">Withdraw</button><p class="mut">Minimum withdraw: ${t(c.min_wd)}</p></div>`;
+  if(tab=='adm')return adm();
+  app.innerHTML=h;
+}
+async function watch(){
+  const b=adb;b.disabled=true;
+  try{await window['show_'+ZONE]();}catch(e){b.disabled=false;return tg.showAlert('বিজ্ঞাপন সম্পূর্ণ দেখা হয়নি')}
+  const r=await api('ad');tg.showAlert(r.message||r.error);await load();
+}
+async function wd(){const r=await api('wd',{amount:wa.value,method:wm.value,account:wc.value});tg.showAlert(r.message||r.error);if(r.message)load()}
+// ===== অ্যাডমিন =====
+async function adm(){
+  const s=A.s=await api('a_stats');const st=A.st||'pending';
+  const w=(await api('a_wd',{status:st})).list;
+  app.innerHTML=`<div class="g"><div class="card"><div class="mut">Users</div><b>${s.users}</b><div class="mut">${s.today} today</div></div><div class="card"><div class="mut">Pending</div><b>${s.pending}</b><div class="mut">${t(s.pendingSum)}</div></div><div class="card"><div class="mut">Paid out</div><b>${t(s.paid)}</b></div><div class="card"><div class="mut">Referrals</div><b>${s.refs}</b></div></div>
+  <div class="card"><b>Withdrawals</b><select onchange="A.st=this.value;adm()">${['pending','approved','rejected'].map(x=>`<option ${x==st?'selected':''}>${x}</option>`).join('')}</select>
+  ${w.map(x=>`<div class="row" style="display:block"><b>${esc(x.name)} · ${t(x.amount)}</b><div class="mut">ID ${x.uid} · ${esc(x.method)} · ${dt(x.ts)}</div><div>${esc(x.account)} <a href="#" onclick="navigator.clipboard.writeText('${esc(x.account)}');return false">কপি</a></div>${st=='pending'?`<div class="g"><button class="ok" onclick="act(${x.id},1)">Approve</button><button class="no" onclick="act(${x.id},0)">Reject</button></div>`:''}</div>`).join('')||'<p class="mut">কিছু নেই</p>'}</div>
+  <div class="card"><b>Settings</b>${[['ad_reward','প্রতি অ্যাড রিওয়ার্ড'],['ref_reward','রেফার রিওয়ার্ড'],['min_wd','ন্যূনতম উইথড্র'],['hourly','ঘণ্টায় লিমিট'],['daily','দৈনিক লিমিট']].map(([k,n])=>`<div class="mut" style="margin-top:8px">${n}</div><div style="display:flex;gap:6px"><input id="c_${k}" value="${D.cfg[k]}"><button style="width:90px" onclick="cf('${k}')">Save</button></div>`).join('')}</div>
+  <div class="card"><b>Broadcast</b><input id="bt" placeholder="মেসেজ"><button onclick="bc()">Send to all users</button></div>`;
+}
+async function act(id,ok){const r=await api('a_act',{id,ok});tg.showAlert(r.message||r.error);adm()}
+async function cf(k){const r=await api('a_cfg',{k,v:document.getElementById('c_'+k).value});tg.showAlert(r.message||r.error);D=await api('me')}
+async function bc(){let off=0,n=0;do{const r=await api('a_bc',{text:bt.value,offset:off});if(r.error)return tg.showAlert(r.error);n+=r.sent;off=r.next}while(off!==null);tg.showAlert('পাঠানো হয়েছে: '+n)}
+load();
+</script></body></html>
